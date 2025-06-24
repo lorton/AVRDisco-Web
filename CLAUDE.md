@@ -22,6 +22,9 @@ DiscoAVR is a Python web application that provides a mobile-optimized browser in
 # Install dependencies
 pip install -r requirements.txt
 
+# Install test dependencies
+pip install -r test_requirements.txt
+
 # Run with default settings (localhost:5000, AVR at 192.168.1.100:60128)
 python app.py
 
@@ -33,6 +36,18 @@ python app.py --host 0.0.0.0 --port 8080
 
 # Enable debug mode (prints telnet commands instead of sending them)
 python app.py --debug
+```
+
+### Testing
+```bash
+# Run all tests
+pytest
+
+# Run specific test file
+pytest tests/test_avr_controller.py
+
+# Run with coverage (if pytest-cov installed)
+pytest --cov=. --cov-report=html
 ```
 
 ### Command Line Options
@@ -48,7 +63,7 @@ python app.py --debug
 ### AV Receiver Commands
 Commands are defined in `avr_commands.py` with three main dictionaries:
 - `AVR_COMMANDS`: Maps command names to actual telnet commands (supports multi-line commands with \n)
-- `COMMAND_GROUPS`: Organizes commands into UI sections (power, volume, zone2, inputs, etc.)
+- `COMMAND_GROUPS`: Organizes commands into UI sections (power, main_volume, zone2_volume, inputs, etc.)
 - `COMMAND_LABELS`: Provides human-readable button labels
 
 The default commands are for Denon/Marantz receivers. Commands support multi-line sequences (e.g., "MVUP\nMVUP" for multiple volume steps).
@@ -78,10 +93,10 @@ For commands that need to be sent multiple times (like volume adjustments), use 
 
 The web interface is organized into logical groups:
 - **Power**: On/Off controls
-- **Volume**: Up/Down/Mute with single and multi-step options
-- **Volume Presets**: Quick volume level settings (40, 55, 70)
-- **Zone 2**: Secondary zone controls
-- **Zone 2 Presets**: Quick zone 2 volume settings
+- **Main Volume**: Up/Down/Mute with single and multi-step options (2x3 grid layout)
+- **Main Volume Presets**: Quick volume level settings (40, 55, 70)
+- **Zone 2 Volume**: Secondary zone controls (identical layout to main volume)
+- **Zone 2 Volume Presets**: Quick zone 2 volume settings
 - **Input Sources**: Source selection (CD, DVD, Bluetooth, etc.)
 - **Surround Modes**: Audio processing modes
 
@@ -93,6 +108,12 @@ Run with `--debug` flag to test without an actual receiver:
 - Prints telnet commands to console instead of sending them
 - Returns mock responses
 - Useful for UI testing and command verification
+
+### Unit Tests
+Tests focus on logic and behavior rather than simple existence checks:
+- **test_avr_controller.py**: Tests telnet communication logic, multi-line command handling, debug mode behavior
+- **test_app.py**: Tests Flask API endpoints, error handling, command routing
+- **test_config.py**: Tests argument parsing and configuration management
 
 ### Testing Connection
 1. Start the server: `python app.py --avr-host YOUR_RECEIVER_IP --avr-port YOUR_PORT`

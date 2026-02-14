@@ -189,6 +189,25 @@ Tests focus on logic and behavior rather than simple existence checks:
 3. Click "Connect" to test telnet connection
 4. Use control buttons to send commands
 
+### Raspberry Pi Deployment
+
+For production deployment on Raspberry Pi with systemd service (auto-start on boot):
+
+```bash
+# Complete setup guide in RASPBERRY_PI_SETUP.md
+
+# Quick install
+sudo cp avrdisco.service /etc/systemd/system/
+sudo systemctl enable avrdisco
+sudo systemctl start avrdisco
+
+# Service management
+sudo systemctl status avrdisco
+sudo journalctl -u avrdisco -f
+```
+
+See **[RASPBERRY_PI_SETUP.md](RASPBERRY_PI_SETUP.md)** for complete installation guide.
+
 ## Common Receiver Ports
 - Port 23: Standard telnet
 - Port 60128: Denon/Marantz receivers (default)

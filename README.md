@@ -49,22 +49,38 @@ See [ASYNC_VERSION.md](ASYNC_VERSION.md) for full async documentation.
 
 ## Installation on Raspberry Pi
 
+For complete Raspberry Pi setup with **auto-start on boot** and **auto-restart on failure**, see the comprehensive guide:
+
+**📖 [RASPBERRY_PI_SETUP.md](RASPBERRY_PI_SETUP.md)**
+
+### Quick Install with Systemd Service
+
 ```bash
-# Clone repository
-git clone <your-repo-url>
+# Clone and setup
+cd ~
+git clone https://github.com/lorton/AVRDisco-Web.git
 cd AVRDisco-Web
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements/async.txt
 
-# Install Python dependencies
-pip install -r requirements.txt
-
-# Configure for your receiver
+# Configure
 cp .env.example .env
-nano .env  # Edit with your receiver's IP address
+nano .env  # Set your receiver's IP
 
-# Run on all network interfaces
-python app.py --host 0.0.0.0 --port 5000
+# Install as service (auto-start + auto-restart)
+sudo cp avrdisco.service /etc/systemd/system/
+sudo systemctl enable avrdisco
+sudo systemctl start avrdisco
 
-# Access from your phone at http://<raspberry-pi-ip>:5000
+# Access from any device: http://<raspberry-pi-ip>:5000
+```
+
+**Service Commands:**
+```bash
+sudo systemctl status avrdisco   # Check status
+sudo systemctl restart avrdisco  # Restart service
+sudo journalctl -u avrdisco -f   # View live logs
 ```
 
 ## Configuration

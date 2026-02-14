@@ -3,7 +3,6 @@ Async AVRDisco-Web application using Quart.
 """
 from typing import Dict, Any
 from quart import Quart, render_template, request, jsonify, websocket
-from quart_cors import cors
 import logging
 import asyncio
 import sys
@@ -28,14 +27,34 @@ logging.basicConfig(
 # Initialize Quart app
 app = Quart(__name__)
 
-# CORS configuration
-cors_origins = config.CORS_ORIGINS
-if isinstance(cors_origins, list):
-    app = cors(app, allow_origin=cors_origins)
-elif cors_origins == '*':
-    app = cors(app, allow_origin='*')
-else:
-    app = cors(app, allow_origin=[cors_origins])
+# CORS configuration - using Quart's native approach
+# Add CORS headers to all responses
+@app.after_request
+async def add_cors_headers(response):
+    """Add CORS headers to all responses."""
+    cors_origins = config.CORS_ORIGINS
+
+    if cors_origins == '*':
+        response.headers['Access-Control-Allow-Origin'] = '*'
+    elif isinstance(cors_origins, list):
+        # For specific origins, check the request origin
+        origin = request.headers.get('Origin')
+        if origin in cors_origins:
+            response.headers['Access-Control-Allow-Origin'] = origin
+    else:
+        # Single origin string
+        response.headers['Access-Control-Allow-Origin'] = cors_origins
+
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type,Authorization'
+    response.headers['Access-Control-Allow-Methods'] = 'GET,POST,PUT,DELETE,OPTIONS'
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    return response
+
+# Handle OPTIONS requests for CORS preflight
+@app.route('/<path:path>', methods=['OPTIONS'])
+async def handle_options(path):
+    """Handle CORS preflight requests."""
+    return '', 204
 
 # Initialize AVR controller
 avr = AsyncAVRController(config.AVR_HOST, config.AVR_PORT, config.AVR_TIMEOUT, config.DEBUG)

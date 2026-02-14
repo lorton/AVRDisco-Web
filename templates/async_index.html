@@ -5,15 +5,112 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <title>DiscoAVR - AV Receiver Control</title>
+    <title>DiscoAVR - AV Receiver Control (Async)</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        /* Additional styles for state display */
+        .state-display {
+            background: #222;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .state-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .state-item {
+            background: #333;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .state-label {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .state-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+
+        .state-value.inactive {
+            color: #666;
+        }
+
+        .state-value.off {
+            color: #ff4444;
+        }
+
+        .volume-bar {
+            background: #444;
+            height: 8px;
+            border-radius: 4px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+
+        .volume-fill {
+            background: linear-gradient(90deg, #00ff88, #00aa66);
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .ws-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ff4444;
+            margin-left: 8px;
+        }
+
+        .ws-indicator.connected {
+            background: #00ff88;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <h1>DiscoAVR</h1>
+        <h1>DiscoAVR <span class="ws-indicator" id="ws-indicator"></span></h1>
 
         <div id="status" class="status disconnected">
             Disconnected
+        </div>
+
+        <!-- State Display -->
+        <div class="state-display">
+            <div style="color: #ccc; margin-bottom: 10px; font-weight: bold;">Current State</div>
+            <div class="state-grid">
+                <div class="state-item">
+                    <div class="state-label">Power</div>
+                    <div class="state-value" id="state-power">--</div>
+                </div>
+                <div class="state-item">
+                    <div class="state-label">Volume</div>
+                    <div class="state-value" id="state-volume">--</div>
+                    <div class="volume-bar">
+                        <div class="volume-fill" id="volume-bar" style="width: 0%"></div>
+                    </div>
+                </div>
+                <div class="state-item">
+                    <div class="state-label">Muted</div>
+                    <div class="state-value" id="state-muted">--</div>
+                </div>
+                <div class="state-item">
+                    <div class="state-label">Input</div>
+                    <div class="state-value" id="state-input">--</div>
+                </div>
+            </div>
         </div>
 
         <div class="connection-controls">
@@ -122,6 +219,6 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/async_app.js') }}"></script>
 </body>
 </html>

@@ -1,0 +1,6 @@
+# Base dependencies for AVRDisco-Web
+Flask==3.0.3
+Flask-SocketIO==5.3.6
+python-socketio==5.11.2
+eventlet==0.35.2
+python-dotenv==1.0.1

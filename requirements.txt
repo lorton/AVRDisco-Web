@@ -1,4 +1,6 @@
-Flask==3.0.3
-Flask-SocketIO==5.3.6
-python-socketio==5.11.2
-eventlet==0.35.2
+# Main requirements file - installs base dependencies
+# For development: pip install -r requirements/dev.txt
+# For testing: pip install -r requirements/test.txt
+# For production: pip install -r requirements/prod.txt
+
+-r requirements/base.txt

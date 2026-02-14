@@ -1,7 +1,14 @@
-# AVR Command mappings - adjust these for your specific receiver model
-# These are common Denon/Marantz commands, modify as needed
+"""
+AVR Command mappings and UI configuration.
+Adjust these for your specific receiver model.
+These are common Denon/Marantz commands, modify as needed.
+"""
+from typing import Dict, List
 
-AVR_COMMANDS = {
+AVR_COMMANDS: Dict[str, str] = {
+    # Presets / Scenes
+    'preset_vinyl': 'SIPHONO\nMUOFF\nZ2MUOFF\nMV67\nZ267',
+
     # Power controls
     'power_on': 'PWON',
     'power_off': 'PWSTANDBY',
@@ -48,7 +55,8 @@ AVR_COMMANDS = {
 }
 
 # UI groupings for better organization
-COMMAND_GROUPS = {
+COMMAND_GROUPS: Dict[str, List[str]] = {
+    'presets': ['preset_vinyl'],
     'power': ['power_on', 'power_off'],
     'main_volume': ['volume_up', 'volume_up_5', 'mute_on', 'volume_down', 'volume_down_5', 'mute_off'],
     'main_volume_presets': ['volume_40', 'volume_55', 'volume_70'],
@@ -59,7 +67,8 @@ COMMAND_GROUPS = {
 }
 
 # Human-readable labels for UI buttons
-COMMAND_LABELS = {
+COMMAND_LABELS: Dict[str, str] = {
+    'preset_vinyl': '🎵 Vinyl',
     'power_on': 'Power On',
     'power_off': 'Power Off',
     'volume_up': 'Vol +',

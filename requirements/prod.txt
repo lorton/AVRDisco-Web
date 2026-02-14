@@ -1,0 +1,8 @@
+# Production dependencies
+-r base.txt
+
+# Production WSGI server
+gunicorn==22.0.0
+
+# Production monitoring (optional)
+# prometheus-flask-exporter==0.23.0

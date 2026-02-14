@@ -1,48 +1,73 @@
-from flask import Flask, render_template, request, jsonify
+from typing import Dict, Any, Tuple
+from flask import Flask, render_template, request, jsonify, Response
 from flask_socketio import SocketIO, emit
 import logging
+import time
+import sys
 from config import Config
 from avr_controller import AVRController
 from avr_commands import AVR_COMMANDS, COMMAND_GROUPS, COMMAND_LABELS
+from command_validator import validate_custom_command, sanitize_command
 
-# Initialize config
-config = Config()
+# Initialize config - skip arg parsing if running under pytest
+_is_testing = 'pytest' in sys.modules
+config = Config(parse_args=not _is_testing)
 
-# Setup logging
-logging.basicConfig(level=logging.INFO)
+# Setup logging with configurable level
+logging.basicConfig(
+    level=getattr(logging, config.LOG_LEVEL),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 # Initialize Flask app
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")
+
+# CORS configuration - use environment variable or default to localhost in production
+# Set CORS_ORIGINS environment variable to "*" for development or specific origins for production
+cors_origins = config.CORS_ORIGINS
+socketio = SocketIO(app, cors_allowed_origins=cors_origins)
 
 # Initialize AVR controller
 avr = AVRController(config.AVR_HOST, config.AVR_PORT, config.AVR_TIMEOUT, config.DEBUG)
 
 @app.route('/')
-def index():
-    return render_template('index.html', 
-                         command_groups=COMMAND_GROUPS, 
+def index() -> str:
+    """Render main web interface."""
+    return render_template('index.html',
+                         command_groups=COMMAND_GROUPS,
                          command_labels=COMMAND_LABELS)
 
 @app.route('/api/connect', methods=['POST'])
-def connect_avr():
+def connect_avr() -> Response:
+    """Connect to AV receiver."""
     success = avr.connect()
     return jsonify({'success': success, 'connected': avr.connected})
 
 @app.route('/api/disconnect', methods=['POST'])
-def disconnect_avr():
+def disconnect_avr() -> Response:
+    """Disconnect from AV receiver."""
     avr.disconnect()
     return jsonify({'success': True, 'connected': avr.connected})
 
 @app.route('/api/status', methods=['GET'])
-def get_status():
+def get_status() -> Response:
+    """Get current connection status."""
     return jsonify({'connected': avr.connected})
 
 @app.route('/api/command/<command_name>', methods=['POST'])
-def send_preset_command(command_name):
+def send_preset_command(command_name: str) -> Response:
+    """
+    Send predefined command to AV receiver.
+
+    Args:
+        command_name: Name of command from AVR_COMMANDS
+
+    Returns:
+        JSON response with success status and command response
+    """
     if command_name not in AVR_COMMANDS:
         return jsonify({'success': False, 'error': 'Unknown command'})
-    
+
     command = AVR_COMMANDS[command_name]
     success, response = avr.send_and_wait(command)
     return jsonify({
@@ -53,14 +78,31 @@ def send_preset_command(command_name):
     })
 
 @app.route('/api/command', methods=['POST'])
-def send_custom_command():
-    data = request.get_json()
-    command = data.get('command', '')
-    
+def send_custom_command() -> Response:
+    """
+    Send custom command to AV receiver.
+
+    Request body should contain: {"command": "..."}
+
+    Returns:
+        JSON response with success status and command response
+    """
+    data: Dict[str, Any] = request.get_json() or {}
+    command: str = data.get('command', '')
+
     if not command:
         return jsonify({'success': False, 'error': 'No command provided'})
-    
-    success, response = avr.send_and_wait(command)
+
+    # Validate and sanitize the custom command
+    is_valid, error_msg = validate_custom_command(command, allow_multiline=True)
+    if not is_valid:
+        logging.warning(f"Invalid custom command rejected: {command} - {error_msg}")
+        return jsonify({'success': False, 'error': f'Invalid command: {error_msg}'})
+
+    # Sanitize the command (though validation should have caught issues)
+    sanitized_command = sanitize_command(command)
+
+    success, response = avr.send_and_wait(sanitized_command)
     return jsonify({
         'success': success,
         'response': response,
@@ -68,22 +110,57 @@ def send_custom_command():
     })
 
 @socketio.on('connect')
-def handle_connect():
-    emit('status', {'connected': avr.connected})
+def handle_connect() -> None:
+    """Handle SocketIO client connection."""
+    logging.info("SocketIO client connected")
+    emit('status_update', {
+        'connected': avr.connected,
+        'timestamp': time.time()
+    })
+
+
+@socketio.on('disconnect')
+def handle_disconnect() -> None:
+    """Handle SocketIO client disconnection."""
+    logging.info("SocketIO client disconnected")
+
 
 @socketio.on('send_command')
-def handle_command(data):
+def handle_command(data: Dict[str, Any]) -> None:
+    """
+    Handle SocketIO command request.
+
+    Args:
+        data: Dictionary containing command_name
+    """
     command_name = data.get('command_name')
-    if command_name and command_name in AVR_COMMANDS:
-        command = AVR_COMMANDS[command_name]
-        success, response = avr.send_and_wait(command)
-        emit('command_response', {
-            'success': success,
-            'command_name': command_name,
-            'command': command,
-            'response': response,
-            'connected': avr.connected
-        })
+    if not command_name:
+        emit('error', {'message': 'No command_name provided'})
+        return
+
+    if command_name not in AVR_COMMANDS:
+        emit('error', {'message': f'Unknown command: {command_name}'})
+        return
+
+    command = AVR_COMMANDS[command_name]
+    success, response = avr.send_and_wait(command)
+    emit('command_response', {
+        'success': success,
+        'command_name': command_name,
+        'command': command,
+        'response': response,
+        'connected': avr.connected,
+        'timestamp': time.time()
+    })
+
+
+@socketio.on('request_status')
+def handle_status_request() -> None:
+    """Handle request for current status."""
+    emit('status_update', {
+        'connected': avr.connected,
+        'timestamp': time.time()
+    })
 
 if __name__ == '__main__':
     print(f"Starting DiscoAVR server...")

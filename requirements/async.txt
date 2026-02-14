@@ -1,0 +1,10 @@
+# Async version dependencies (using Quart instead of Flask)
+# Use this for the async version of the application
+
+# Core async dependencies
+Quart==0.19.6
+quart-cors==0.7.0
+hypercorn==0.17.3  # ASGI server for Quart
+
+# Shared dependencies
+python-dotenv==1.0.1

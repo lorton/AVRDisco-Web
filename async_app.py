@@ -27,6 +27,9 @@ logging.basicConfig(
 # Initialize Quart app
 app = Quart(__name__)
 
+# Fix for Quart/Flask version compatibility
+app.config['PROVIDE_AUTOMATIC_OPTIONS'] = True
+
 # CORS configuration - using Quart's native approach
 # Add CORS headers to all responses
 @app.after_request

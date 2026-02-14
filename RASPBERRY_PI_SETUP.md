@@ -2,6 +2,17 @@
 
 Complete guide for installing AVRDisco-Web as a systemd service on Raspberry Pi (Debian/Raspbian).
 
+## Important: Username and Path Configuration
+
+The systemd service needs to know:
+1. **Your username** (default: `pi`)
+2. **Installation directory** (default: `/home/pi/AVRDisco-Web`)
+
+**Two ways to handle this:**
+
+✅ **Recommended:** Use `./install_service.sh` - automatically detects your setup
+📝 **Manual:** Edit `avrdisco.service` to match your username/path (see Step 7)
+
 ## Prerequisites
 
 - Raspberry Pi (any model with network)
@@ -133,17 +144,53 @@ Press `Ctrl+C` to stop.
 
 ### Step 7: Install Systemd Service
 
-The service file is already included in the repository.
+You have two options: automated installation or manual setup.
 
-**Review the service file (optional):**
+#### Option A: Automated Installation (Recommended)
+
+Use the installation script which automatically detects your username and directory:
+
 ```bash
-cat avrdisco.service
+./install_service.sh
 ```
 
-**Install the service:**
+The script will:
+- Detect your username and installation directory
+- Customize the service file automatically
+- Install and enable the service
+- Show you the access URL
+
+#### Option B: Manual Installation
+
+If you need to install manually or customize further:
+
+**1. Edit the service file for your setup:**
+
 ```bash
-# Copy service file
-sudo cp avrdisco.service /etc/systemd/system/
+# Make a copy
+cp avrdisco.service avrdisco.service.custom
+
+# Edit the custom file
+nano avrdisco.service.custom
+```
+
+**Update these lines** to match your setup:
+```ini
+# Change 'pi' to your username
+User=yourusername
+Group=yourusername
+
+# Change '/home/pi/AVRDisco-Web' to your installation path
+WorkingDirectory=/home/yourusername/AVRDisco-Web
+Environment="PATH=/home/yourusername/AVRDisco-Web/venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=-/home/yourusername/AVRDisco-Web/.env
+ExecStart=/home/yourusername/AVRDisco-Web/venv/bin/hypercorn async_app:app --bind 0.0.0.0:5000 --workers 2
+```
+
+**2. Install the customized service:**
+```bash
+# Copy customized service file
+sudo cp avrdisco.service.custom /etc/systemd/system/avrdisco.service
 
 # Reload systemd
 sudo systemctl daemon-reload
@@ -153,6 +200,29 @@ sudo systemctl enable avrdisco
 
 # Start the service now
 sudo systemctl start avrdisco
+```
+
+#### Different Installation Locations
+
+**If you installed in `/opt` instead of `/home/pi`:**
+```bash
+# Example for /opt/AVRDisco-Web
+User=yourusername
+WorkingDirectory=/opt/AVRDisco-Web
+Environment="PATH=/opt/AVRDisco-Web/venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=-/opt/AVRDisco-Web/.env
+ExecStart=/opt/AVRDisco-Web/venv/bin/hypercorn async_app:app --bind 0.0.0.0:5000 --workers 2
+```
+
+**If you're using a system user (no home directory):**
+```bash
+# Example for dedicated avrdisco user
+User=avrdisco
+Group=avrdisco
+WorkingDirectory=/var/lib/avrdisco
+Environment="PATH=/var/lib/avrdisco/venv/bin:/usr/local/bin:/usr/bin:/bin"
+EnvironmentFile=-/var/lib/avrdisco/.env
+ExecStart=/var/lib/avrdisco/venv/bin/hypercorn async_app:app --bind 0.0.0.0:5000 --workers 2
 ```
 
 ### Step 8: Verify Service is Running
@@ -253,7 +323,25 @@ sudo journalctl -u avrdisco -n 50
 
 **Common issues:**
 
-1. **Port already in use:**
+1. **Wrong username or path in service file:**
+   ```bash
+   # Error: "Failed to determine user credentials"
+   # or "Failed to execute command: No such file or directory"
+
+   # Check what's in the service file
+   grep -E 'User=|WorkingDirectory=|ExecStart=' /etc/systemd/system/avrdisco.service
+
+   # If paths are wrong, reinstall with install_service.sh
+   # OR manually edit:
+   sudo nano /etc/systemd/system/avrdisco.service
+   # Update User, Group, WorkingDirectory, and ExecStart paths
+
+   # Then reload and restart
+   sudo systemctl daemon-reload
+   sudo systemctl restart avrdisco
+   ```
+
+2. **Port already in use:**
    ```bash
    # Find what's using port 5000
    sudo lsof -i :5000
@@ -261,24 +349,41 @@ sudo journalctl -u avrdisco -n 50
    # Kill the process or change PORT in .env
    ```
 
-2. **Virtual environment missing:**
+3. **Virtual environment missing:**
    ```bash
-   cd /home/pi/AVRDisco-Web
+   cd /home/pi/AVRDisco-Web  # Or your installation directory
    python3 -m venv venv
    source venv/bin/activate
    pip install -r requirements/async.txt
    ```
 
-3. **Permissions error:**
+4. **Permissions error:**
    ```bash
-   # Fix ownership
+   # Fix ownership (replace 'pi' with your username and path with your installation)
    sudo chown -R pi:pi /home/pi/AVRDisco-Web
+
+   # If you installed in /opt or another location:
+   sudo chown -R yourusername:yourusername /your/installation/path
    ```
 
-4. **Python module not found:**
+5. **Python module not found:**
    ```bash
    source venv/bin/activate
    pip install -r requirements/async.txt
+   sudo systemctl restart avrdisco
+   ```
+
+6. **User doesn't exist:**
+   ```bash
+   # If service file references wrong user
+   # Check current user:
+   whoami
+
+   # Edit service file with correct username:
+   sudo nano /etc/systemd/system/avrdisco.service
+   # Change User= and Group= lines
+
+   sudo systemctl daemon-reload
    sudo systemctl restart avrdisco
    ```
 
@@ -484,6 +589,7 @@ rm -rf /home/pi/AVRDisco-Web
 
 ## Quick Reference
 
+### Service Commands
 ```bash
 # Service commands
 sudo systemctl {start|stop|restart|status} avrdisco
@@ -499,6 +605,53 @@ hostname -I
 
 # Test connection
 curl http://localhost:5000
+```
+
+### Common Installation Paths
+
+**Default (user: pi, home directory):**
+```bash
+User=pi
+WorkingDirectory=/home/pi/AVRDisco-Web
+ExecStart=/home/pi/AVRDisco-Web/venv/bin/hypercorn async_app:app ...
+```
+
+**Different username (e.g., john):**
+```bash
+User=john
+WorkingDirectory=/home/john/AVRDisco-Web
+ExecStart=/home/john/AVRDisco-Web/venv/bin/hypercorn async_app:app ...
+```
+
+**System-wide installation (/opt):**
+```bash
+User=youruser
+WorkingDirectory=/opt/AVRDisco-Web
+ExecStart=/opt/AVRDisco-Web/venv/bin/hypercorn async_app:app ...
+```
+
+**Dedicated user (no login):**
+```bash
+User=avrdisco
+Group=avrdisco
+WorkingDirectory=/var/lib/avrdisco
+ExecStart=/var/lib/avrdisco/venv/bin/hypercorn async_app:app ...
+```
+
+### Verify Service Configuration
+
+```bash
+# Check what user/path is configured
+grep -E 'User=|WorkingDirectory=|ExecStart=' /etc/systemd/system/avrdisco.service
+
+# Check if user exists
+id USERNAME
+
+# Check if directory exists
+ls -la /path/to/AVRDisco-Web
+
+# Check virtual environment
+ls /path/to/AVRDisco-Web/venv/bin/hypercorn
 ```
 
 Enjoy your automated AV receiver control! 🎵

@@ -6,9 +6,15 @@ Wants=network-online.target
 
 [Service]
 Type=simple
+
+# IMPORTANT: Update these values for your setup
+# If you used install_service.sh, these will be set automatically
+# Otherwise, replace with your username and installation path:
 User=pi
 Group=pi
 WorkingDirectory=/home/pi/AVRDisco-Web
+
+# Update these paths to match your installation directory
 Environment="PATH=/home/pi/AVRDisco-Web/venv/bin:/usr/local/bin:/usr/bin:/bin"
 Environment="PYTHONUNBUFFERED=1"
 
@@ -16,6 +22,7 @@ Environment="PYTHONUNBUFFERED=1"
 EnvironmentFile=-/home/pi/AVRDisco-Web/.env
 
 # Run the async version with hypercorn for production
+# Update the path to match your installation directory
 ExecStart=/home/pi/AVRDisco-Web/venv/bin/hypercorn async_app:app --bind 0.0.0.0:5000 --workers 2
 
 # Restart configuration

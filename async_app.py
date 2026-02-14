@@ -204,6 +204,7 @@ async def broadcast_state_update(state: ReceiverState):
         state: Updated receiver state
     """
     if not websocket_clients:
+        logging.debug("No WebSocket clients to broadcast to")
         return
 
     message = {
@@ -212,12 +213,15 @@ async def broadcast_state_update(state: ReceiverState):
         'connected': avr.connected
     }
 
+    logging.debug(f"Broadcasting state to {len(websocket_clients)} clients: volume={state.volume}")
+
     # Send to all connected clients
     disconnected = set()
     for client in websocket_clients:
         try:
             await client.send_json(message)
-        except Exception:
+        except Exception as e:
+            logging.debug(f"Failed to send to client: {e}")
             disconnected.add(client)
 
     # Remove disconnected clients

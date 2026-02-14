@@ -285,8 +285,12 @@ class AsyncAVRController:
         try:
             response = await self.read_response(timeout)
             if response:
+                logging.debug(f"Read response for '{command}': {response}")
                 await self._update_state_from_response(response)
-        except Exception:
+            else:
+                logging.debug(f"No response received for '{command}'")
+        except Exception as e:
+            logging.debug(f"Error reading response for '{command}': {e}")
             pass  # Ignore errors reading response
 
     async def _update_state_from_response(self, response: str):
@@ -309,6 +313,7 @@ class AsyncAVRController:
                     if vol_str.isdigit():
                         self.state.volume = int(vol_str)
                         updated = True
+                        logging.debug(f"Updated volume from response '{response}': {self.state.volume}")
                 except (ValueError, IndexError):
                     pass
 
@@ -358,6 +363,7 @@ class AsyncAVRController:
 
             if updated:
                 self.state.last_updated = datetime.now()
+                logging.debug(f"State updated, notifying {len(self._state_update_callbacks)} callbacks")
                 await self._notify_state_update()
 
     async def _simulate_state_change(self, command: str):
@@ -409,22 +415,51 @@ class AsyncAVRController:
             return
 
         # Request current status (queries that return state)
-        queries = ['PW?', 'MV?', 'MU?', 'SI?', 'MS?', 'Z2?']
+        queries = ['MV?', 'MU?', 'PW?', 'SI?']
 
-        for query in queries:
-            try:
-                await self.send_command(query, retry_on_failure=False)
-                await asyncio.sleep(0.1)
-            except Exception:
-                pass  # Ignore errors during state query
+        try:
+            if not self.connection:
+                return
+
+            # Send all queries quickly
+            for query in queries:
+                command_bytes = (query + '\r').encode('ascii')
+                await self.connection.write(command_bytes)
+                logging.debug(f"Sent query: {query}")
+                await asyncio.sleep(0.05)  # Small delay between queries
+
+            # Now read all responses for a period of time
+            # The receiver will send back multiple responses
+            read_deadline = asyncio.get_event_loop().time() + 1.0  # Read for up to 1 second
+
+            while asyncio.get_event_loop().time() < read_deadline:
+                try:
+                    response = await self.connection.read_until(b'\r', timeout=0.2)
+                    if response:
+                        decoded = response.decode('ascii').strip()
+                        logging.debug(f"Poll response: {decoded}")
+                        await self._update_state_from_response(decoded)
+                except asyncio.TimeoutError:
+                    # No more responses, we're done
+                    break
+                except Exception as e:
+                    logging.debug(f"Error reading poll response: {e}")
+                    break
+
+        except Exception as e:
+            logging.debug(f"Error in state polling: {e}")
+            pass  # Ignore errors during state query
 
     async def _poll_state(self):
         """Poll receiver state periodically."""
+        logging.debug("State polling started")
         while self.connected:
             try:
+                logging.debug("Polling receiver state...")
                 await self._request_initial_state()
                 await asyncio.sleep(STATE_POLL_INTERVAL)
             except asyncio.CancelledError:
+                logging.debug("State polling cancelled")
                 break
             except Exception as e:
                 logging.error(f"Error polling state: {e}")

@@ -24,11 +24,22 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
+# Fix for Quart 0.19.6 / Flask 3.x compatibility
+# Flask 3.x removed PROVIDE_AUTOMATIC_OPTIONS from default config
+# but Quart 0.19.6 still expects it. Patch add_url_rule to provide default.
+from flask.sansio.scaffold import Scaffold
+if not hasattr(Scaffold, '_patched_for_flask3'):
+    original_add_url_rule = Scaffold.add_url_rule
+    def patched_add_url_rule(self, *args, **kwargs):
+        # Ensure PROVIDE_AUTOMATIC_OPTIONS exists in config
+        if hasattr(self, 'config') and 'PROVIDE_AUTOMATIC_OPTIONS' not in self.config:
+            self.config['PROVIDE_AUTOMATIC_OPTIONS'] = True
+        return original_add_url_rule(self, *args, **kwargs)
+    Scaffold.add_url_rule = patched_add_url_rule
+    Scaffold._patched_for_flask3 = True
+
 # Initialize Quart app
 app = Quart(__name__)
-
-# Fix for Quart/Flask version compatibility
-app.config['PROVIDE_AUTOMATIC_OPTIONS'] = True
 
 # CORS configuration - using Quart's native approach
 # Add CORS headers to all responses

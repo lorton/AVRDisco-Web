@@ -12,9 +12,12 @@ from async_avr_controller import AsyncAVRController, ReceiverState
 from avr_commands import AVR_COMMANDS, COMMAND_GROUPS, COMMAND_LABELS
 from command_validator import validate_custom_command, sanitize_command
 
-# Initialize config - skip arg parsing if running under pytest
+# Initialize config - skip arg parsing if not running as main script
+# When imported by ASGI servers (hypercorn, uvicorn, etc.), we're not __main__
+# In those cases, use environment variables only
+_is_main = __name__ == '__main__'
 _is_testing = 'pytest' in sys.modules
-config = Config(parse_args=not _is_testing)
+config = Config(parse_args=(_is_main and not _is_testing))
 
 # Setup logging with configurable level
 logging.basicConfig(

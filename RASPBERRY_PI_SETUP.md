@@ -99,6 +99,8 @@ pip install -r requirements.txt
 
 ### Step 5: Configuration
 
+**IMPORTANT:** When running as a systemd service with hypercorn, all configuration **must** be done via the `.env` file (environment variables). Command-line arguments are not used.
+
 Create and edit the configuration file:
 
 ```bash
@@ -108,14 +110,16 @@ nano .env
 
 Edit these values:
 ```bash
-# Your AV receiver's IP address
+# Your AV receiver's IP address (REQUIRED)
 AVR_HOST=192.168.1.100
 
 # Your receiver's telnet port (60128 for Denon/Marantz, 23 for others)
 AVR_PORT=60128
 
-# Web server port (default: 5000)
-PORT=5000
+# Web server port - Note: This is set in the service file's hypercorn command
+# The service uses --bind 0.0.0.0:5000 so PORT in .env is ignored
+# Change the port in the service file if needed (see Troubleshooting section)
+# PORT=5000
 
 # Allowed CORS origins (use * for development, specific URLs for production)
 CORS_ORIGINS=*
@@ -128,6 +132,8 @@ DEBUG=false
 ```
 
 Save with `Ctrl+X`, then `Y`, then `Enter`.
+
+**Note:** The web server port (5000) is configured in the systemd service file with hypercorn's `--bind 0.0.0.0:5000`. To change the port, edit the service file (see "Changing the Port" in Troubleshooting section).
 
 ### Step 6: Test Installation
 
@@ -282,6 +288,64 @@ If the service fails 3 times in 60 seconds, it will stop trying. Check logs:
 sudo journalctl -u avrdisco -n 50
 ```
 
+## Configuration Explained
+
+### How Configuration Works
+
+AVRDisco-Web supports multiple configuration methods:
+
+**1. Environment Variables (`.env` file) - ✅ Recommended for systemd service**
+```bash
+# Edit .env file
+AVR_HOST=192.168.1.100
+AVR_PORT=60128
+DEBUG=false
+```
+
+**2. Command-line Arguments - Only when running directly**
+```bash
+# Works with: python async_app.py
+python async_app.py --avr-host 192.168.1.100 --port 8080
+```
+
+**3. Defaults - Built-in fallback values**
+
+### When Running as Systemd Service (hypercorn)
+
+**Configuration is read from:**
+- ✅ `.env` file (environment variables)
+- ✅ Service file `EnvironmentFile` directive
+- ❌ Command-line arguments are **NOT** used
+
+**Port configuration:**
+- Web server port is set in the service file: `--bind 0.0.0.0:5000`
+- To change port, edit the service file (not `.env`)
+
+**Example `.env` for service:**
+```bash
+AVR_HOST=192.168.1.100
+AVR_PORT=60128
+CORS_ORIGINS=*
+LOG_LEVEL=INFO
+DEBUG=false
+```
+
+### When Running Manually
+
+**Configuration is read from:**
+- ✅ Command-line arguments (highest priority)
+- ✅ `.env` file (environment variables)
+- ✅ Defaults
+
+**Example:**
+```bash
+# Use .env file
+python async_app.py
+
+# Override with command-line
+python async_app.py --avr-host 192.168.1.50 --debug
+```
+
 ## Updating the Application
 
 ```bash
@@ -386,6 +450,32 @@ sudo journalctl -u avrdisco -n 50
    sudo systemctl daemon-reload
    sudo systemctl restart avrdisco
    ```
+
+### Changing the Web Server Port
+
+The default web server port is 5000. To use a different port:
+
+**Edit the service file:**
+```bash
+sudo nano /etc/systemd/system/avrdisco.service
+```
+
+**Find and change the `--bind` argument:**
+```ini
+# Change from:
+ExecStart=/path/to/venv/bin/hypercorn async_app:app --bind 0.0.0.0:5000 --workers 2
+
+# To (for example, port 8080):
+ExecStart=/path/to/venv/bin/hypercorn async_app:app --bind 0.0.0.0:8080 --workers 2
+```
+
+**Reload and restart:**
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart avrdisco
+```
+
+**Note:** The `PORT` variable in `.env` is **not** used when running with hypercorn. The port is set in the hypercorn command with `--bind 0.0.0.0:PORT`.
 
 ### Can't Connect to Receiver
 

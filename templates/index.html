@@ -60,9 +60,9 @@
         <!-- Main Volume Presets -->
         <div class="control-group">
             <div class="group-title">Main Volume Presets</div>
-            <div class="button-grid">
+            <div class="button-grid preset-grid">
                 {% for cmd in command_groups.main_volume_presets %}
-                <button class="btn volume" onclick="sendCommand('{{ cmd }}')">
+                <button class="btn volume preset-small" onclick="sendCommand('{{ cmd }}')">
                     {{ command_labels[cmd] }}
                 </button>
                 {% endfor %}
@@ -84,9 +84,9 @@
         <!-- Zone 2 Volume Presets -->
         <div class="control-group">
             <div class="group-title">Zone 2 Volume Presets</div>
-            <div class="button-grid">
+            <div class="button-grid preset-grid">
                 {% for cmd in command_groups.zone2_volume_presets %}
-                <button class="btn volume" onclick="sendCommand('{{ cmd }}')">
+                <button class="btn volume preset-small" onclick="sendCommand('{{ cmd }}')">
                     {{ command_labels[cmd] }}
                 </button>
                 {% endfor %}

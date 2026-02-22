@@ -63,6 +63,12 @@ h1 {
     gap: 10px;
 }
 
+/* Smaller preset grid for volume presets */
+.preset-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+}
+
 /* Buttons - minimum 44px height for better touch targets */
 .btn {
     background: #333;
@@ -119,6 +125,13 @@ h1 {
     to {
         transform: rotate(360deg);
     }
+}
+
+/* Volume preset buttons - smaller and more compact */
+.btn.preset-small {
+    padding: 8px 6px;
+    font-size: 14px;
+    min-height: 42px;
 }
 
 /* Button color variants */
@@ -245,10 +258,20 @@ h1 {
         grid-template-columns: repeat(2, 1fr);
     }
 
+    .preset-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
     .btn {
         font-size: 14px;
         padding: 12px 8px;
         min-height: 52px;
+    }
+
+    .btn.preset-small {
+        padding: 6px 4px;
+        font-size: 13px;
+        min-height: 38px;
     }
 
     h1 {
